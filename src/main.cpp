@@ -1,20 +1,15 @@
-#include <math.h>
-#include <uWS/uWS.h>
-#include <chrono>
 #include <iostream>
-#include <thread>
+#include <uWS/uWS.h>
+#include <math.h>
 #include <vector>
+#include <chrono>
+#include <thread>
 #include "Eigen-3.3/Eigen/Core"
-#include "Eigen-3.3/Eigen/QR"
-#include "MPC.h"
 #include "json.hpp"
+#include "MPC.h"
+#include "polynomial.h"
 
 using json = nlohmann::json;
-
-// For converting back and forth between radians and degrees.
-constexpr double pi() { return M_PI; }
-double deg2rad(double x) { return x * pi() / 180; }
-double rad2deg(double x) { return x * 180 / pi(); }
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -27,44 +22,11 @@ string hasData(string s) {
   if (found_null != string::npos) {
     return "";
   }
-  
   else if (b1 != string::npos && b2 != string::npos) {
     return s.substr(b1, b2 - b1 + 2);
   }
   
   return "";
-}
-
-// Fit a polynomial
-// Adapted from:
-// https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
-  assert(xvals.size() == yvals.size());
-  assert(order >= 1 && order <= xvals.size() - 1);
-  Eigen::MatrixXd A(xvals.size(), order + 1);
-
-  for (int i = 0; i < xvals.size(); i++) {
-    A(i, 0) = 1.0;
-  }
-
-  for (int j = 0; j < xvals.size(); j++) {
-    for (int i = 0; i < order; i++) {
-      A(j, i + 1) = A(j, i) * xvals(j);
-    }
-  }
-
-  auto Q = A.householderQr();
-  auto result = Q.solve(yvals);
-  return result;
-}
-
-// Evaluate a polynomial
-double polyeval(Eigen::VectorXd coeffs, double x) {
-  double result = 0.0;
-  for (int i = 0; i < coeffs.size(); i++) {
-    result += coeffs[i] * pow(x, i);
-  }
-  return result;
 }
 
 int main() {
@@ -73,15 +35,16 @@ int main() {
 
   // Initializing the model predictive control object
   MPC mpc;
-
-  h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
-    // "42" at the start of the message means there's a websocket message event.
+  
+  // Initializing the polynomial object
+  Polynomial poly;
+  
+  h.onMessage([&mpc, &poly](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+    // "42" at the start of the message means there's a websocket message event
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
     
     string sdata = string(data).substr(0, length);
-    
-    cout << sdata << endl;
     
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
       
@@ -100,20 +63,44 @@ int main() {
           vector<double> ptsx = j[1]["ptsx"];
           vector<double> ptsy = j[1]["ptsy"];
           
-          // Car state
+          // Current car state
+          // Position in map coordinates
           double px = j[1]["x"];
           double py = j[1]["y"];
+          
+          // Orientation in radians
           double psi = j[1]["psi"];
+          
+          // Speed in MPH
           double v = j[1]["speed"];
           
-          cout << px << " " << py << " " << psi << " " << v << endl;
+          // Speed in m/s
+          v *= 0.447;
           
-          cout << endl;
+          // Steering angle in radians
+          double delta = j[1]["steering_angle"];
+          
+          // Aligning simulator steering convention with MPC
+          delta *= -1.0;
+          
+          // Throttle
+          double a = j[1]["throttle"];
+          
+          // 100 ms (0.1 s) actuation latency
+          double latency = 0.1;
+          
+          // Car's length from the front to center of gravity
+          double Lf = 2.67;
+          
+          // Predicting car's state after latency
+          px += v * cos(psi) * latency;
+          py += v * sin(psi) * latency;
+          psi += (v / Lf) * delta * latency;
+          v += a * latency;
           
           // Transforming waypoints from map to car coordinates
           // x, y, and psi = 0 in car coordinates
           for (int i = 0; i < ptsx.size(); ++i) {
-            
             // Shifting waypoints to car origin
             double shifted_x = ptsx[i] - px;
             double shifted_y = ptsy[i] - py;
@@ -121,114 +108,90 @@ int main() {
             // Rotating waypoints to car's x-axis (heading)
             ptsx[i] = (shifted_x * cos(-psi) - shifted_y * sin(-psi));
             ptsy[i] = (shifted_x * sin(-psi) + shifted_y * cos(-psi));
-            
           }
-          
-//          double* ptrx = &ptsx[0];
-//          Eigen::Map<Eigen::VectorXd> ptsx_eigen(ptrx, 6);
-//          
-//          double* ptry = &ptsy[0];
-//          Eigen::Map<Eigen::VectorXd> ptsy_eigen(ptry, 6);
           
           // Converting vector<double> to Eigen::VectorXd
           Eigen::VectorXd ptsx_eigen(ptsx.size());
           Eigen::VectorXd ptsy_eigen(ptsy.size());
           
           for (int i = 0; i < ptsx.size(); ++i) {
-            
             ptsx_eigen[i] = ptsx[i];
             ptsy_eigen[i] = ptsy[i];
-            
           }
           
           // Fitting car coordinate waypoints to 3rd order polynomial
-          auto coeffs = polyfit(ptsx_eigen, ptsy_eigen, 3);
+          auto coeffs = poly.polyfit(ptsx_eigen, ptsy_eigen, 3);
           
-          cout << coeffs << endl;
-          
-          // FIX TO BE SHORTEST DISTANCE TO POINT
           // Calculating CTE
           // cte = f(x) - y; x = 0, y = 0
-          double cte = polyeval(coeffs, 0);
+          double cte = poly.polyeval(coeffs, 0.0);
           
           // Calculating epsi
           // epsi = psi - arctan(f'(x)); x = 0, psi = 0
           double epsi = -atan(coeffs[1]);
           
-          cout << cte << " " << epsi << endl;
-          
           // Car state vector
           // x, y, and psi = 0 in car coordinates
           Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, epsi;
+          state << 0.0, 0.0, 0.0, v, cte, epsi;
           
+          // Predicting the car's future state
           auto vars = mpc.Solve(state, coeffs);
           
-          json msgJson;
-          
-          // Dividing steer_value by PI(25/180) rad to normalize and by -1 to match simulator steering convention
-          msgJson["steering_angle"] = -vars[0]/(deg2rad(25.0));
-          msgJson["throttle"] = vars[1];
-
-          //Display the MPC predicted trajectory 
+          //Displaying the MPC predicted trajectory
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
           
           for (int i = 2; i < vars.size(); ++i) {
-            
             if (i % 2 == 0) {
-              
               mpc_x_vals.push_back(vars[i]);
-              
             }
-            
             else {
-              
               mpc_y_vals.push_back(vars[i]);
-              
             }
-            
           }
-          
-          msgJson["mpc_x"] = mpc_x_vals;
-          msgJson["mpc_y"] = mpc_y_vals;
           
           // Creating coordinate points for the reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
           
-          double spacing = 2.5;
-          int num_points = 25;
+          double spacing = 5.0;
+          int num_points = 10;
           
           for (int i = 1; i < num_points; ++i) {
-            
             next_x_vals.push_back(spacing * i);
-            next_y_vals.push_back(polyeval(coeffs, spacing * i));
-            
+            next_y_vals.push_back(poly.polyeval(coeffs, spacing * i));
           }
-
+          
+          json msgJson;
+          
+          // Dividing steer_value by PI(25/180) rad to normalize
+          // Negative to match simulator steering convention
+          msgJson["steering_angle"] = -vars[0] / ((25.0 / 180.0) * M_PI);//deg2rad(25.0);
+          
+          msgJson["throttle"] = vars[1];
+          
+          msgJson["mpc_x"] = mpc_x_vals;
+          msgJson["mpc_y"] = mpc_y_vals;
+          
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
-
-
-          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
-          std::cout << msg << std::endl;
           
-          // Latency
-          // The purpose is to mimic real driving conditions where
-          // the car does not actuate the commands instantly.
+          auto msg = "42[\"steer\"," + msgJson.dump() + "]";
+          
+          // Delaying the system by 100 ms (0.1 s) to mimic actuation latency
           this_thread::sleep_for(chrono::milliseconds(100));
+          
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
           
         }
         
       }
+      
       else {
-        
         // Manual driving
         std::string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-        
       }
       
     }
