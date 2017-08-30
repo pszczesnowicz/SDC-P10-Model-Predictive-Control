@@ -1,8 +1,8 @@
-This is my submission for the Udacity Self-Driving Car Nanodegree Model Predictive Control (MPC) Project. You can find my C++ source code [here](https://github.com/pszczesnowicz/SDCND-P10-MPC/tree/master/src). The goal of this project was to implement a MPC system that could drive a car around a track in a simulator. A similar task was accomplished by my [Behavioral Cloning](https://github.com/pszczesnowicz/SDCND-P3-BehavioralCloning) and [PID Controller](https://github.com/pszczesnowicz/SDCND-P9-PIDController) projects.
+This is my submission for the Udacity Self-Driving Car Nanodegree Model Predictive Control (MPC) Project. You can find my C++ source code [here](https://github.com/pszczesnowicz/SDCND-P10-MPC/tree/master/src). The goal of this project was to implement a MPC system that could drive a car around a track in a simulator. A similar task was accomplished by my [Behavioral Cloning](https://pszczesnowicz.github.io/SDCND-P3-BehavioralCloning/) and [PID Controller](https://pszczesnowicz.github.io/SDCND-P9-PIDController/) projects.
 
 ## Model Predictive Control
 
-The MPC system optimizes the car's trajectory based on its current state by calculating trajectory costs for different actuations. The actuation with the lowest cost is then executed. The trajectory is optimized following every actuation using the car's new state.
+The MPC system optimizes the car's trajectory based on its current state by calculating trajectories and their corresponding costs for different steering and throttle actuations. The actuations with the lowest associated cost are then executed. This process is repeated for the state following the actuations.
 
 ### State
 
