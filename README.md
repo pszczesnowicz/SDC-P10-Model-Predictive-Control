@@ -1,18 +1,22 @@
-This is my submission for the Udacity Self-Driving Car Nanodegree Model Predictive Control (MPC) Project. You can find my C++ source code [here](https://github.com/pszczesnowicz/SDCND-P10-MPC/tree/master/src). The goal of this project was to implement a MPC system that could drive a car around a track in a simulator. A similar task was accomplished by my [Behavioral Cloning](https://pszczesnowicz.github.io/SDCND-P3-BehavioralCloning/) and [PID Controller](https://pszczesnowicz.github.io/SDCND-P9-PIDController/) projects.
+This is my submission for the Udacity Self-Driving Car Nanodegree Model Predictive Control (MPC) Project. You can find my C++ source code [here](https://github.com/pszczesnowicz/SDC-P10-Model-Predictive-Control/tree/master/src). The goal of this project was to implement the MPC method to drive a car around a simulated track. A similar task was accomplished by my [Behavioral Cloning](https://pszczesnowicz.github.io/SDC-P3-Behavioral-Cloning/) and [PID Controller](https://pszczesnowicz.github.io/SDC-P9-PID-Controller/) projects.
 
-## Model Predictive Control
+# Summary
 
-The MPC system optimizes the car's trajectory based on its current state by calculating trajectories and their corresponding costs for different steering and throttle actuations. The actuations with the lowest associated cost are then executed. This process is repeated for the state following the actuations.
+I applied the MPC method to the&mdash;now familiar&mdash;task of controlling a simulated car’s steering and throttle.
 
-### State
+# Model Predictive Control
 
-The state is a vector consisting of the car's position in <a href="https://www.codecogs.com/eqnedit.php?latex=x" target="_blank"><img src="https://latex.codecogs.com/gif.latex?x" title="x" /></a> and <a href="https://www.codecogs.com/eqnedit.php?latex=y" target="_blank"><img src="https://latex.codecogs.com/gif.latex?y" title="y" /></a> coordinates (meters), heading <a href="https://www.codecogs.com/eqnedit.php?latex=\psi" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\psi" title="\psi" /></a> (radians), speed <a href="https://www.codecogs.com/eqnedit.php?latex=v" target="_blank"><img src="https://latex.codecogs.com/gif.latex?v" title="v" /></a> (meters/second), cross track error <a href="https://www.codecogs.com/eqnedit.php?latex=cte" target="_blank"><img src="https://latex.codecogs.com/gif.latex?cte" title="cte" /></a> (meters), and heading error <a href="https://www.codecogs.com/eqnedit.php?latex=e\psi" target="_blank"><img src="https://latex.codecogs.com/gif.latex?e\psi" title="e\psi" /></a> (radians) at time <a href="https://www.codecogs.com/eqnedit.php?latex=t" target="_blank"><img src="https://latex.codecogs.com/gif.latex?t" title="t" /></a>.
+The MPC method optimizes the car's trajectory based on its current state by calculating trajectories and their corresponding costs for different steering and throttle actuations. The actuations with the lowest associated cost are then executed. This process is repeated for the state following the actuations.
+
+## State
+
+The state is a vector consisting of the car's position in <a href="https://www.codecogs.com/eqnedit.php?latex=x" target="_blank"><img src="https://latex.codecogs.com/gif.latex?x" title="x" /></a> and <a href="https://www.codecogs.com/eqnedit.php?latex=y" target="_blank"><img src="https://latex.codecogs.com/gif.latex?y" title="y" /></a> coordinates (meters), heading <a href="https://www.codecogs.com/eqnedit.php?latex=\psi" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\psi" title="\psi" /></a> (radians), speed <a href="https://www.codecogs.com/eqnedit.php?latex=v" target="_blank"><img src="https://latex.codecogs.com/gif.latex?v" title="v" /></a> (meters/second), cross track error <a href="https://www.codecogs.com/eqnedit.php?latex=cte" target="_blank"><img src="https://latex.codecogs.com/gif.latex?cte" title="cte" /></a> (meters), and heading error <a href="https://www.codecogs.com/eqnedit.php?latex=e\psi" target="_blank"><img src="https://latex.codecogs.com/gif.latex?e\psi" title="e\psi" /></a> (radians) at time <a href="https://www.codecogs.com/eqnedit.php?latex=t" target="_blank"><img src="https://latex.codecogs.com/gif.latex?t" title="t" /></a> (seconds).
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=state=[x_{t},y_{t},\psi_{t},v_{t},cte_{t},e\psi_{t}]" target="_blank"><img src="https://latex.codecogs.com/gif.latex?state=[x_{t},y_{t},\psi_{t},v_{t},cte_{t},e\psi_{t}]" title="state=[x_{t},y_{t},\psi_{t},v_{t},cte_{t},e\psi_{t}]" /></a>
 
-### Actuators
+## Actuators
 
-The actuator vector contains the steering <a href="https://www.codecogs.com/eqnedit.php?latex=\delta" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\delta" title="\delta" /></a> (radians) and throttle <a href="https://www.codecogs.com/eqnedit.php?latex=a" target="_blank"><img src="https://latex.codecogs.com/gif.latex?a" title="a" /></a> actuations at time <a href="https://www.codecogs.com/eqnedit.php?latex=t" target="_blank"><img src="https://latex.codecogs.com/gif.latex?t" title="t" /></a>.
+The actuator vector contains the steering <a href="https://www.codecogs.com/eqnedit.php?latex=\delta" target="_blank"><img src="https://latex.codecogs.com/gif.latex?\delta" title="\delta" /></a> (radians) and throttle <a href="https://www.codecogs.com/eqnedit.php?latex=a" target="_blank"><img src="https://latex.codecogs.com/gif.latex?a" title="a" /></a> (unitless) actuations at time <a href="https://www.codecogs.com/eqnedit.php?latex=t" target="_blank"><img src="https://latex.codecogs.com/gif.latex?t" title="t" /></a>.
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=actuators=[\delta_{t},a_{t}]" target="_blank"><img src="https://latex.codecogs.com/gif.latex?actuators=[\delta_{t},a_{t}]" title="actuators=[\delta_{t},a_{t}]" /></a>
 
@@ -22,7 +26,7 @@ They are bounded by the following limits:
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=a&space;\epsilon&space;[-1,&space;1]" target="_blank"><img src="https://latex.codecogs.com/gif.latex?a&space;\epsilon&space;[-1,&space;1]" title="a \epsilon [-1, 1]" /></a>
 
-### Update Equations
+## Update Equations
 
 The following equations predict the car's future state. They are used to solve the latency problem (explained below) and to constrain the future state and error equations that are sent to the optimizer.
 
@@ -38,17 +42,17 @@ The following equations predict the car's future state. They are used to solve t
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=e\psi_{t&plus;1}=\psi_{t}-acrtan(f'(x_{t}))&plus;\frac{v_{t}}{L_{f}}\delta&space;_{t}dt" target="_blank"><img src="https://latex.codecogs.com/gif.latex?e\psi_{t&plus;1}=\psi_{t}-acrtan(f'(x_{t}))&plus;\frac{v_{t}}{L_{f}}\delta&space;_{t}dt" title="e\psi_{t+1}=\psi_{t}-acrtan(f'(x_{t}))+\frac{v_{t}}{L_{f}}\delta _{t}dt" /></a>
 
-### Cost
+## Cost
 
 The cost is a summation of the squares of the <a href="https://www.codecogs.com/eqnedit.php?latex=cte" target="_blank"><img src="https://latex.codecogs.com/gif.latex?cte" title="cte" /></a>, <a href="https://www.codecogs.com/eqnedit.php?latex=e\psi" target="_blank"><img src="https://latex.codecogs.com/gif.latex?e\psi" title="e\psi" /></a>, difference between current and reference velocity, actuations, and difference between sequential actuations for all timesteps <a href="https://www.codecogs.com/eqnedit.php?latex=N" target="_blank"><img src="https://latex.codecogs.com/gif.latex?N" title="N" /></a>.
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=cost=\sum_{t=1}^{N}cte_{t}^2&plus;e\psi_{t}^2&plus;(v_{t}-v_{ref})^2&plus;\delta_{t}^2&plus;a_{t}^2&plus;(\delta_{t&plus;1}-\delta_{t})^2&plus;(a_{t&plus;1}-a_{t})^2" target="_blank"><img src="https://latex.codecogs.com/gif.latex?cost=\sum_{t=1}^{N}cte_{t}^2&plus;e\psi_{t}^2&plus;(v_{t}-v_{ref})^2&plus;\delta_{t}^2&plus;a_{t}^2&plus;(\delta_{t&plus;1}-\delta_{t})^2&plus;(a_{t&plus;1}-a_{t})^2" title="cost=\sum_{t=1}^{N}cte_{t}^2+e\psi_{t}^2+(v_{t}-v_{ref})^2+\delta_{t}^2+a_{t}^2+(\delta_{t+1}-\delta_{t})^2+(a_{t+1}-a_{t})^2" /></a>
 
-### Parameters
+## Parameters
 
 The number of timesteps and their duration <a href="https://www.codecogs.com/eqnedit.php?latex=dt" target="_blank"><img src="https://latex.codecogs.com/gif.latex?dt" title="dt" /></a> was set to 10 steps and 0.1 seconds. This predicts the car's state 1 second into the future. During testing, I found this was enough for the car to anticipate a turn while not too far ahead as to cause the car to oscillate while driving on a straight portion of the track.
 
-With less timesteps the car was not able to make sharp turns because the shorter predicted trajectory did not have to be as curved as the reference trajectory to yield a small cost, i.e. the predicted trajectory was more of a straight line tangent to the reference trajectory. With more timesteps the time horizon stretched too far ahead such that the car would turn on a straight portion of the track once a curve has met the time horizon. A shorter timestep duration meant that the number of timesteps had to be increased in order to maintain turning performance and therefore, increase computational time. A longer timestep duration resulted in less precise actuations, i.e. choppier steering.
+With less timesteps the car was not able to make sharp turns because the shorter predicted trajectory did not have to be as curved as the reference trajectory to yield a small cost, i.e. the predicted trajectory was more of a straight line tangent to the reference trajectory. With more timesteps the time horizon stretched too far ahead such that the car would turn on a straight portion of the track once a curve has met the time horizon. A shorter time step duration meant that the number of timesteps had to be increased in order to maintain turning performance and therefore, increase computational time. A longer time step duration resulted in less precise actuations, i.e. choppier steering.
 
 Experimentation with different cost multipliers lead me to heavily weigh the heading error (x100), steering actuation (x100), and difference between sequential steering actuations (x1000). These three costs most significantly influence the car's steering and in turn can dampen steering oscillation.
 
@@ -56,19 +60,21 @@ Before returning the actuations to the simulator, the throttle is multiplied by 
 
 `throttle = solution.x[a_start] * (M_PI / (fabs(solution.x[delta_start]) * 36.0 + M_PI));`
 
-## Latency
+# Latency
 
-To replicate actuation latency as in a real world self-driving car, the system has a delay of 100 milliseconds before the actuations are sent to the simulator. This causes a problem because the actuations for the car's predicted future state are no longer correct, e.g. a turn command when the car has already made the turn. The solution was to predict the car's state ahead of the latency using the current state and actuations before sending it to the MPC to predict the future trajectory and actuations.
+To replicate actuation latency, as in a real world self-driving car, the system has a delay of 100 milliseconds before the actuations are sent to the simulator. This causes a problem because the actuations for the car's predicted future state are no longer correct, e.g. a turn command when the car has already made the turn. The solution was to predict the car's state ahead of the latency using the current state and actuations before sending it to the MPC to predict the future trajectory and actuations.
 
-## Results
+# Results
 
-With only manual weight tuning the car managed to reach a top speed of 95 MPH while staying in control.
+With only manual weight tuning, the car managed to reach a top speed of 95 MPH while staying in control.
 
-[<img src="https://raw.githubusercontent.com/pszczesnowicz/SDCND-P10-MPC/master/readme_images/mpc.jpg" width="800">](https://www.youtube.com/watch?v=SCNWJEqh2Y4&feature=youtu.be "Click to watch")
+[<img src="https://raw.githubusercontent.com/pszczesnowicz/SDC-P10-Model-Predictive-Control/master/readme_images/mpc.jpg" width="640">](https://youtu.be/SCNWJEqh2Y4 "Click to watch")
 
-To improve the MPC system I plan on implementing automatic weight tuning and creating additional waypoints by interpolating. The additional waypoints should yield better polynomial coefficients leading to a smoother reference trajectory and in turn more precise actuations.
+# Conclusion
 
-## References
+The MPC method is superior to the PID Controller in this application because it optimizes the car’s controls based on its current state and the planned path. As a result, the maximum attainable speed is almost doubled when compared to the results of my [PID Controller](https://pszczesnowicz.github.io/SDC-P9-PID-Controller/) project.
+
+# References
 
 [Udacity Self-Driving Car ND](http://www.udacity.com/drive)
 
